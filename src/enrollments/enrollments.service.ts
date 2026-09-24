@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { JwtPayload } from '../auth/strategies/jwt.strategy.js';
 import { Role } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -11,7 +12,10 @@ import { CreateEnrollmentDto } from './dto/create-enrollment.dto.js';
 
 @Injectable()
 export class EnrollmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async create(dto: CreateEnrollmentDto) {
     const student = await this.prisma.user.findUnique({
@@ -31,10 +35,8 @@ export class EnrollmentsService {
       throw new NotFoundException(`Curso ${dto.courseId} no encontrado`);
     }
 
-    const maxStudents = parseInt(
-      process.env.MAX_STUDENTS_PER_COURSE ?? '30',
-      10,
-    );
+    const maxStudents =
+      this.configService.get<number>('MAX_STUDENTS_PER_COURSE') ?? 30;
     if (course._count.enrollments >= maxStudents) {
       throw new BadRequestException(
         `El curso ${course.name} ya tiene el cupo máximo de ${maxStudents} estudiantes`,
